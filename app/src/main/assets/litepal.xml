@@ -6,9 +6,9 @@
     <version value="1" />
 
     <list>
-        <mapping class="com.quickWeather.android.db.Province" />
-        <mapping class="com.quickWeather.android.db.City" />
-        <mapping class="com.quickWeather.android.db.County" />
+        <mapping class="com.nerv.quickweather.db.Province" />
+        <mapping class="com.nerv.quickweather.db.City" />
+        <mapping class="com.nerv.quickweather.db.County" />
     </list>
 
 </litepal>
