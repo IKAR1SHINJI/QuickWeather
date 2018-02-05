@@ -25,8 +25,8 @@
                 android:id="@+id/weather_layout"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:scrollbars="none"
-                android:overScrollMode="never">
+                android:overScrollMode="never"
+                android:scrollbars="none">
 
                 <LinearLayout
                     android:orientation="vertical"
@@ -48,6 +48,11 @@
 
                     <include layout="@layout/carwash_advice"/>
 
+                    <Button
+                        android:id="@+id/location_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
                 </LinearLayout>
 
             </ScrollView>
@@ -59,8 +64,7 @@
             android:name="com.nerv.quickweather.ChooseAreaFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="start"
-            />
+            android:layout_gravity="start" />
 
     </android.support.v4.widget.DrawerLayout>
 

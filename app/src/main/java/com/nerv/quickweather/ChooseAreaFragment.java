@@ -81,14 +81,19 @@ public class ChooseAreaFragment extends Fragment {
      */
     private int currentLevel;
 
-
+    /**
+     * 初始化。
+     */
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        //获取控件实例
         View view = inflater.inflate(R.layout.choose_area, container, false);
         titleText = (TextView) view.findViewById(R.id.title_text);
         backButton = (Button) view.findViewById(R.id.back_button);
         listView = (ListView) view.findViewById(R.id.list_view);
+
+        //初始化ArrayAdapter并设置为ListView的适配器
         adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, dataList);
         listView.setAdapter(adapter);
         return view;
@@ -97,6 +102,8 @@ public class ChooseAreaFragment extends Fragment {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
+
+        //给ListView设置点击事件
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -108,13 +115,23 @@ public class ChooseAreaFragment extends Fragment {
                     queryCounties();
                 }else if(currentLevel ==LEVEL_COUNTY){
                     String weatherId=countyList.get(position).getWeatherId();
-                    Intent intent=new Intent(getActivity(),WeatherActivity.class);
-                    intent.putExtra("weather_id",weatherId);
-                    startActivity(intent);
-                    getActivity().finish();
+                    if(getActivity() instanceof MainActivity){
+
+                        Intent intent=new Intent(getActivity(),WeatherActivity.class);
+                        intent.putExtra("weather_id",weatherId);
+                        startActivity(intent);
+                        getActivity().finish();
+                    }else if(getActivity() instanceof WeatherActivity){
+                        WeatherActivity activity=(WeatherActivity) getActivity();
+                        activity.drawerLayout.closeDrawers();
+                        activity.swipeRefresh.setRefreshing(true);
+                        activity.requestWeather(weatherId);
+                    }
                 }
             }
         });
+
+        //给Button设置点击事件
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -132,8 +149,12 @@ public class ChooseAreaFragment extends Fragment {
      * 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。
      */
     private void queryProvinces() {
+
+        //将标题设为“中国”并隐藏返回按钮
         titleText.setText("中国");
         backButton.setVisibility(View.GONE);
+
+        //用LitePal查询接口从数据库读取省级数据
         provinceList = DataSupport.findAll(Province.class);
         if (provinceList.size() > 0) {
             dataList.clear();
@@ -198,34 +219,34 @@ public class ChooseAreaFragment extends Fragment {
      * 根据传入的地址和类型从服务器上查询省市县数据。
      */
     private void queryFromServer(String address, final String type) {
-        showProgressDialog();
-        HttpUtil.sendOkHttpRequest(address, new Callback() {
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                String responseText = response.body().string();
-                boolean result = false;
-                if ("province".equals(type)) {
-                    result = Utility.handleProvinceResponse(responseText);
-                } else if ("city".equals(type)) {
-                    result = Utility.handleCityResponse(responseText, selectedProvince.getId());
-                } else if ("county".equals(type)) {
-                    result = Utility.handleCountyResponse(responseText, selectedCity.getId());
-                }
-                if (result) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            closeProgressDialog();
-                            if ("province".equals(type)) {
-                                queryProvinces();
-                            } else if ("city".equals(type)) {
-                                queryCities();
-                            } else if ("county".equals(type)) {
-                                queryCounties();
-                            }
+                showProgressDialog();
+                HttpUtil.sendOkHttpRequest(address, new Callback() {
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        String responseText = response.body().string();
+                        boolean result = false;
+                        if ("province".equals(type)) {
+                            result = Utility.handleProvinceResponse(responseText);
+                        } else if ("city".equals(type)) {
+                            result = Utility.handleCityResponse(responseText, selectedProvince.getId());
+                        } else if ("county".equals(type)) {
+                            result = Utility.handleCountyResponse(responseText, selectedCity.getId());
                         }
-                    });
-                }
+                        if (result) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    closeProgressDialog();
+                                    if ("province".equals(type)) {
+                                        queryProvinces();
+                                    } else if ("city".equals(type)) {
+                                        queryCities();
+                                    } else if ("county".equals(type)) {
+                                        queryCounties();
+                                    }
+                                }
+                            });
+                        }
             }
 
             @Override

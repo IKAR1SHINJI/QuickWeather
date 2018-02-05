@@ -12,11 +12,22 @@ public class Now {
     public String temperature;
 
     @SerializedName("cond")
-    public More more;
+    public Cond cond;
 
-    public class More{
+    public class Cond{
 
         @SerializedName("txt")
-        public String info;
+        public String condInfo;
+
+
+    }
+
+    @SerializedName("wind")
+    public Wind wind;
+
+    public class Wind{
+
+        @SerializedName("sc")
+        public String windInfo;
     }
 }

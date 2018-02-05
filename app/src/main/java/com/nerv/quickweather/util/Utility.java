@@ -39,7 +39,7 @@ public class Utility {
     }
 
     /**
-     * 市级数据
+     * 解析和处理服务器返回的市级数据
      */
     public static boolean handleCityResponse(String response,int provinceId){
         if(!TextUtils.isEmpty(response)){
@@ -63,7 +63,7 @@ public class Utility {
 
 
     /**
-     * 县级数据
+     * 解析和处理服务器返回的县级数据
      */
     public static boolean handleCountyResponse(String response,int cityId){
         if(!TextUtils.isEmpty(response)){
