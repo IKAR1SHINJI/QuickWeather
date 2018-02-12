@@ -21,14 +21,12 @@
         android:textColor="#fff"
         android:textSize="20sp" />
 
-    <TextView
-        android:id="@+id/title_update_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <Button
+        android:id="@+id/locate_btn"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_marginRight="10dp"
         android:layout_alignParentRight="true"
         android:layout_centerVertical="true"
-        android:textColor="#fff"
-        android:textSize="14sp"/>
-
+        android:background="@drawable/ic_locate" />
 </RelativeLayout>

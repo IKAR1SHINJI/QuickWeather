@@ -1,10 +1,15 @@
 package com.nerv.quickweather;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -27,6 +32,8 @@ import com.nerv.quickweather.util.HttpUtil;
 import com.nerv.quickweather.util.Utility;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -53,13 +60,19 @@ public class WeatherActivity extends AppCompatActivity {
 
     private TextView titleCity;
 
-    private TextView titleUpdateTime;
-
     private TextView degreeText;
 
     private TextView weatherCondText;
 
-    private TextView weatherWindText;
+    private TextView updateTime;
+
+    private TextView feelTemperature;
+
+    private TextView weatherWindLv;
+
+    private TextView weatherWindSpd;
+
+    private TextView weatherWindDir;
 
     private LinearLayout forecastLayout;
 
@@ -77,16 +90,19 @@ public class WeatherActivity extends AppCompatActivity {
 
     private ImageView bingPicImg;
 
-    private LocationClient mLocationClient;
+    public LocationClient mLocationClient=null;
 
-    private MyLocationListener myLocationListener;
+//    private TextView positionText;
+
 
     private Button locateBtn;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //判断系统版本，Android6.0以上状态栏沉浸
         if(Build.VERSION.SDK_INT>=21){
             View decorView=getWindow().getDecorView();
             int option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
@@ -98,10 +114,13 @@ public class WeatherActivity extends AppCompatActivity {
         //初始化各个控件
         weatherLayout = (ScrollView) findViewById(R.id.weather_layout);
         titleCity=(TextView) findViewById(R.id.title_city);
-        titleUpdateTime=(TextView) findViewById(R.id.title_update_time);
+        updateTime=(TextView) findViewById(R.id.update_time);
         degreeText=(TextView) findViewById(R.id.degree_text);
+        feelTemperature=(TextView) findViewById(R.id.feel_temperature);
         weatherCondText=(TextView) findViewById(R.id.weather_cond_text);
-        weatherWindText=(TextView) findViewById(R.id.weather_wind_text);
+        weatherWindLv=(TextView) findViewById(R.id.weather_wind_lv);
+        weatherWindSpd=(TextView) findViewById(R.id.weather_wind_spd);
+        weatherWindDir=(TextView) findViewById(R.id.weather_wind_dir);
         forecastLayout=(LinearLayout) findViewById(R.id.forecast_layout);
         aqiText=(TextView) findViewById(R.id.aqi_text);
         pm25Text=(TextView) findViewById(R.id.pm25_text);
@@ -113,20 +132,20 @@ public class WeatherActivity extends AppCompatActivity {
         swipeRefresh=(SwipeRefreshLayout) findViewById(R.id.swipe_refresh);
         drawerLayout=(DrawerLayout) findViewById(R.id.drawer_layout);
         navButton=(Button) findViewById(R.id.nav_button);
-        locateBtn=(Button) findViewById(R.id.location_button);
+        locateBtn=(Button) findViewById(R.id.locate_btn);
+//        positionText=(TextView) findViewById(R.id.position_text_view);
 
         swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
 
         SharedPreferences preferences= PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString=preferences.getString("weather",null);
 
+        //有缓存时直接解析天气，无缓存时去访问服务器查询天气
         if(weatherString!=null){
-            //有缓存时直接解析天气
             Weather weather= Utility.handleWeatherResponse(weatherString);
             mWeatherId=weather.basic.weatherId;
             showWeatherInfo(weather);
         }else {
-            //无缓存时去访问服务器查询天气
             mWeatherId=getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.INVISIBLE);
             requestWeather(mWeatherId);
@@ -139,7 +158,7 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
 
-        //滑动菜单
+        //侧滑菜单
         navButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -147,7 +166,45 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
 
+        /**
+         * 定位
+         * 点击按钮定位
+         */
 
+        locateBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                /**
+                 * 动态权限申请
+                 * 将没有申请到的权限放入List集合中，再将List转换成数组，调用ActivityCompat.requestPermissions()一次申请所需权限
+                 */
+
+                List<String> permissionList = new ArrayList<>();
+                if (ContextCompat.checkSelfPermission(WeatherActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    permissionList.add(Manifest.permission.ACCESS_FINE_LOCATION);
+                }
+                if (ContextCompat.checkSelfPermission(WeatherActivity.this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    permissionList.add(Manifest.permission.READ_PHONE_STATE);
+                }
+                if (ContextCompat.checkSelfPermission(WeatherActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    permissionList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                }
+                if (!permissionList.isEmpty()) {
+                    String [] permissions = permissionList.toArray(new String[permissionList.size()]);
+                    ActivityCompat.requestPermissions(WeatherActivity.this, permissions, 1);
+                } else {
+                    /*
+                    if(mLocationClient.isStarted()==true){
+                        mLocationClient.stop();
+                    }*/
+                    MyLocationListener myListener=new MyLocationListener();
+
+                    mLocationClient=new LocationClient(getApplicationContext());
+                    mLocationClient.registerLocationListener(myListener);
+                    requestLocation();
+                }
+            }
+        });
 
         /**
          * 获取bing每日图片
@@ -160,26 +217,79 @@ public class WeatherActivity extends AppCompatActivity {
             loadBingPic();
         }
 
-        /**
-         * 定位
-         * 点击按钮定位
-         */
-        mLocationClient = new LocationClient(this);
-        myLocationListener = new MyLocationListener();
-        mLocationClient.registerLocationListener(myLocationListener);
-        initLocation();
+
+    }
+
+    private void requestLocation()
+    {
+        LocationClientOption option = new LocationClientOption();
+        option.setCoorType("bd09ll");
+        option.setIsNeedAddress(true);
+//        option.setScanSpan(5000);
+//        option.setOpenGps(true);
+        mLocationClient.setLocOption(option);
         mLocationClient.start();
     }
 
-    void initLocation()
-    {
-        LocationClientOption option = new LocationClientOption();
-        option.setIsNeedAddress(true);
-        option.setOpenGps(true);
-        option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);
-        option.setCoorType("bd09ll");
-        option.setScanSpan(1000);
-        mLocationClient.setLocOption(option);
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mLocationClient.stop();
+    }
+
+    /**
+    * 判断是否获得权限
+    */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case 1:
+                if (grantResults.length > 0) {
+                    for (int result : grantResults) {
+                        if (result != PackageManager.PERMISSION_GRANTED) {
+                            Toast.makeText(this, "必须同意所有权限才能使用定位功能", Toast.LENGTH_SHORT).show();
+                            finish();
+                            return;
+                        }
+                    }
+                    requestLocation();
+                } else {
+                    Toast.makeText(this, "定位时发生未知错误", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                break;
+            default:
+        }
+    }
+
+    /**
+     * 实现定位
+     */
+    public class MyLocationListener implements BDLocationListener{
+        @Override
+        public void onReceiveLocation(BDLocation bdLocation) {
+            StringBuilder currentPosition = new StringBuilder();
+            //获取定位经纬度
+            double longitude=bdLocation.getLongitude();
+            double latitude=bdLocation.getLatitude();
+            String coordinate=longitude+","+latitude;
+
+//            currentPosition.append("纬度:").append(bdLocation.getLatitude()).append("\n");
+//            currentPosition.append("经度:").append(bdLocation.getLongitude()).append("\n");
+//            currentPosition.append("国家:").append(bdLocation.getCountry()).append("\n");
+//            currentPosition.append("省:").append(bdLocation.getProvince()).append("\n");
+//            currentPosition.append("市:").append(bdLocation.getCity()).append("\n");
+//            currentPosition.append("区:").append(bdLocation.getDistrict()).append("\n");
+//            currentPosition.append("街道:").append(bdLocation.getStreet()).append("\n");
+//            currentPosition.append("定位方式:");
+//            if(bdLocation.getLocType()==BDLocation.TypeGpsLocation){
+//                currentPosition.append("GPS");
+//            } else if (bdLocation.getLocType()==BDLocation.TypeNetWorkLocation){
+//                currentPosition.append("网络");
+//            }
+//            positionText.setText(currentPosition);
+            requestWeather(coordinate);
+        }
     }
 
     /**
@@ -261,15 +371,21 @@ public class WeatherActivity extends AppCompatActivity {
     private void showWeatherInfo(Weather weather){
         if(weather!=null&&"ok".equals(weather.status)){
         String cityName = weather.basic.cityName;
-        String updateTime = weather.basic.update.updateTime.split(" ")[1];
-        String degree = weather.now.temperature + "℃";
-        String condInfo=weather.now.cond.condInfo;
-        String windInfo=weather.now.wind.windInfo;
+        String strUpdateTime = weather.basic.update.updateTime.split(" ")[1];
+        String strDegree = weather.now.temperature + "℃";
+        String strFeelTemperature=weather.now.feelTemperature + "℃";
+        String strCondInfo=weather.now.cond.condInfo;
+        String strWindLv=weather.now.wind.windlv;
+        String strWindSpd=weather.now.wind.windSpd;
+        String strWindDir=weather.now.wind.windDir;
         titleCity.setText(cityName);
-        titleUpdateTime.setText("发布时间:"+updateTime);
-        degreeText.setText(degree);
-        weatherCondText.setText(condInfo);
-        weatherWindText.setText(windInfo);
+        updateTime.setText("发布时间:"+strUpdateTime);
+        degreeText.setText(strDegree);
+        feelTemperature.setText("体感温度:"+strFeelTemperature);
+        weatherCondText.setText(strCondInfo);
+        weatherWindLv.setText("风力:"+strWindLv);
+        weatherWindSpd.setText("风速:"+strWindSpd+"km/h");
+        weatherWindDir.setText("风向:"+strWindDir);
         forecastLayout.removeAllViews();
         for(Forecast forecast:weather.forecastList){
             View view= LayoutInflater.from(this).inflate(R.layout.forecast_item,forecastLayout,false);
@@ -303,14 +419,5 @@ public class WeatherActivity extends AppCompatActivity {
         } else {
             Toast.makeText(WeatherActivity.this,"获取天气信息失败",Toast.LENGTH_SHORT).show();
         }
-    }
-}
-
-class MyLocationListener implements BDLocationListener{
-    @Override
-    public void onReceiveLocation(BDLocation bdLocation) {
-        String cityName = bdLocation.getCity();
-        Log.d("Locate",cityName);
-
     }
 }

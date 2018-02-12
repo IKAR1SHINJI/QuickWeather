@@ -48,10 +48,8 @@
 
                     <include layout="@layout/carwash_advice"/>
 
-                    <Button
-                        android:id="@+id/location_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                    <include layout="@layout/baidulbs"/>
+
 
                 </LinearLayout>
 
