@@ -4,6 +4,7 @@ import org.litepal.crud.DataSupport;
 
 /**
  * Created by NERV on 2017/12/4.
+ * Province表
  */
 
 public class Province extends DataSupport{

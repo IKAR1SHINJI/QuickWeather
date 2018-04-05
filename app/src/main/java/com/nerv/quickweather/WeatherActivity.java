@@ -26,6 +26,7 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.nerv.quickweather.gson.Forecast;
+import com.nerv.quickweather.gson.Lifestyle;
 import com.nerv.quickweather.gson.Weather;
 import com.nerv.quickweather.service.AutoUpdateService;
 import com.nerv.quickweather.util.HttpUtil;
@@ -43,7 +44,6 @@ import com.baidu.location.BDLocation;
 import com.baidu.location.BDLocationListener;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
-import android.util.Log;
 
 
 public class WeatherActivity extends AppCompatActivity {
@@ -76,6 +76,8 @@ public class WeatherActivity extends AppCompatActivity {
 
     private LinearLayout forecastLayout;
 
+    private LinearLayout lifestyleLayout;
+
     private TextView aqiText;
 
     private TextView pm25Text;
@@ -97,6 +99,8 @@ public class WeatherActivity extends AppCompatActivity {
 
     private Button locateBtn;
 
+
+    private String key="4632ca196b9e494b92cc93e3821aafc0";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,6 +126,7 @@ public class WeatherActivity extends AppCompatActivity {
         weatherWindSpd=(TextView) findViewById(R.id.weather_wind_spd);
         weatherWindDir=(TextView) findViewById(R.id.weather_wind_dir);
         forecastLayout=(LinearLayout) findViewById(R.id.forecast_layout);
+        lifestyleLayout=(LinearLayout) findViewById(R.id.lifestyle_layout);
         aqiText=(TextView) findViewById(R.id.aqi_text);
         pm25Text=(TextView) findViewById(R.id.pm25_text);
         pm10Text=(TextView) findViewById(R.id.pm10_text);
@@ -296,7 +301,8 @@ public class WeatherActivity extends AppCompatActivity {
      * 根据天气id请求城市天气信息。
      */
     public void requestWeather(final String weatherId){
-        String weatherUrl="http://guolin.tech/api/weather?cityid=" + weatherId + "&key=4632ca196b9e494b92cc93e3821aafc0";
+//        String weatherUrl="http://guolin.tech/api/weather?cityid=" + weatherId + "&key=4632ca196b9e494b92cc93e3821aafc0";
+        String weatherUrl="https://free-api.heweather.com/s6/weather?key=" + key + "&location=" + weatherId;
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
 
             //对异常进行处理
@@ -306,7 +312,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(WeatherActivity.this,"获取天气信息失败",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(WeatherActivity.this,"获取天气信息错误",Toast.LENGTH_LONG).show();
                         swipeRefresh.setRefreshing(false);
                     }
                 });
@@ -316,7 +322,9 @@ public class WeatherActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 final String responseText=response.body().string();
+
                 final Weather weather=Utility.handleWeatherResponse(responseText);
+
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -371,13 +379,13 @@ public class WeatherActivity extends AppCompatActivity {
     private void showWeatherInfo(Weather weather){
         if(weather!=null&&"ok".equals(weather.status)){
         String cityName = weather.basic.cityName;
-        String strUpdateTime = weather.basic.update.updateTime.split(" ")[1];
+        String strUpdateTime = weather.update.updateTime.split(" ")[1];
         String strDegree = weather.now.temperature + "℃";
         String strFeelTemperature=weather.now.feelTemperature + "℃";
-        String strCondInfo=weather.now.cond.condInfo;
-        String strWindLv=weather.now.wind.windlv;
-        String strWindSpd=weather.now.wind.windSpd;
-        String strWindDir=weather.now.wind.windDir;
+        String strCondInfo=weather.now.condInfo;
+        String strWindLv=weather.now.windlv;
+        String strWindSpd=weather.now.windSpd;
+        String strWindDir=weather.now.windDir;
         titleCity.setText(cityName);
         updateTime.setText("发布时间:"+strUpdateTime);
         degreeText.setText(strDegree);
@@ -393,23 +401,34 @@ public class WeatherActivity extends AppCompatActivity {
             TextView infoText = (TextView) view.findViewById(R.id.info_text);
             TextView temperature_range = (TextView) view.findViewById(R.id.temperature_range);
             dateText.setText(forecast.date);
-            infoText.setText(forecast.more.info_d+"/"+forecast.more.info_n);
-            temperature_range.setText(forecast.temperature.max+"/"+forecast.temperature.min+ "℃");
+            infoText.setText(forecast.info_d+"/"+forecast.info_n);
+            temperature_range.setText(forecast.tmp_max+ "℃"+"/"+forecast.tmp_min+ "℃");
             forecastLayout.addView(view);
         }
-        if(weather.aqi!=null){
-            aqiText.setText(weather.aqi.city.aqi);
-            pm25Text.setText(weather.aqi.city.pm25);
-            pm10Text.setText(weather.aqi.city.pm10);
+        lifestyleLayout.removeAllViews();
+        for(Lifestyle lifestyle:weather.lifestyleList){
+            View view=LayoutInflater.from(this).inflate(R.layout.lifestyle_item,lifestyleLayout,false);
+            TextView lifeType=(TextView) view.findViewById(R.id.life_type);
+            TextView lifeText=(TextView) view.findViewById(R.id.life_text);
+            lifeType.setText(lifestyle.life_brf);
+            lifeText.setText(lifestyle.life_txt);
+            lifestyleLayout.addView(view);
         }
+//        if(weather.aqi!=null){
+//            aqiText.setText(weather.aqi.city.aqi);
+//            pm25Text.setText(weather.aqi.city.pm25);
+//            pm10Text.setText(weather.aqi.city.pm10);
+//        }
 
-        String comfort = weather.suggestion.comfort.info;
-        String carWash =  weather.suggestion.carWash.info;
-        String sport = weather.suggestion.sport.info;
-        comfortText.setText(comfort);
-        carWashText.setText(carWash);
-        sportText.setText(sport);
+//        String comfort = weather.lifestyle.comfort.info;
+//        String carWash =  weather.lifestyle.carWash.info;
+//        String sport = weather.lifestyle.sport.info;
+//        comfortText.setText(comfort);
+//        carWashText.setText(carWash);
+//        sportText.setText(sport);
+
         weatherLayout.setVisibility(View.VISIBLE);
+//        lifestyleLayout.setVisibility(View.VISIBLE);
 
         Intent intent = new Intent(this, AutoUpdateService.class);
         startService(intent);

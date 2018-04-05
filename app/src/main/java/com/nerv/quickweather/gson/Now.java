@@ -17,26 +17,16 @@ public class Now {
     public String feelTemperature;
 
 
-    @SerializedName("cond")
-    public Cond cond;
-    public class Cond{
-        //天气
-        @SerializedName("txt")
-        public String condInfo;
-    }
+    @SerializedName("cond_txt")
+    public String condInfo;
 
-
-    @SerializedName("wind")
-    public Wind wind;
-    public class Wind{
-        //风力
-        @SerializedName("sc")
-        public String windlv;
-        //风速
-        @SerializedName("spd")
-        public String windSpd;
-        //风向
-        @SerializedName("dir")
-        public String windDir;
-    }
+    //风力
+    @SerializedName("wind_sc")
+    public String windlv;
+    //风速
+    @SerializedName("wind_spd")
+    public String windSpd;
+    //风向
+    @SerializedName("wind_dir")
+    public String windDir;
 }

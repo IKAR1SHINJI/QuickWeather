@@ -14,6 +14,7 @@ import org.json.JSONObject;
 
 /**
  * Created by NERV on 2017/12/5.
+ * 解析和处理服务器返回的JSON格式数据
  */
 
 public class Utility {
@@ -92,7 +93,7 @@ public class Utility {
     public static Weather handleWeatherResponse(String response) {
         try {
             JSONObject jsonObject = new JSONObject(response);
-            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather");
+            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather6");
             String weatherContent = jsonArray.getJSONObject(0).toString();
             return new Gson().fromJson(weatherContent, Weather.class);
         } catch (Exception e) {

@@ -40,13 +40,15 @@
 
                     <include layout="@layout/forecast" />
 
-                    <include layout="@layout/aqi" />
+                    <include layout="@layout/lifestyle"/>
 
-                    <include layout="@layout/outgoing_advice" />
+                    <!--<include layout="@layout/aqi" />-->
 
-                    <include layout="@layout/sport_advice"/>
+                    <!--<include layout="@layout/outgoing_advice" />-->
 
-                    <include layout="@layout/carwash_advice"/>
+                    <!--<include layout="@layout/sport_advice"/>-->
+
+                    <!--<include layout="@layout/carwash_advice"/>-->
 
                     <include layout="@layout/baidulbs"/>
 

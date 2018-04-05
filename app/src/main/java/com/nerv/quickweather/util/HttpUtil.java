@@ -5,7 +5,7 @@ import okhttp3.Request;
 
 /**
  * Created by NERV on 2017/12/5.
- * 使用OkHttp，可用sendOkHttpRequest()发起Http请求
+ * 调用sendOkHttpRequest()发起Http请求
  */
 
 public class HttpUtil {

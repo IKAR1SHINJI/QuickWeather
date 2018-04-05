@@ -31,6 +31,9 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
+/**
+ * 遍历省市县数据的碎片
+ */
 public class ChooseAreaFragment extends Fragment {
 
     public static final int LEVEL_PROVINCE = 0;
@@ -81,9 +84,6 @@ public class ChooseAreaFragment extends Fragment {
      */
     private int currentLevel;
 
-    /**
-     * 初始化。
-     */
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
