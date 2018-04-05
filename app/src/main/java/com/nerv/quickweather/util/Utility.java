@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.nerv.quickweather.db.City;
 import com.nerv.quickweather.db.County;
 import com.nerv.quickweather.db.Province;
+import com.nerv.quickweather.gson.AQI;
 import com.nerv.quickweather.gson.Weather;
 
 import org.json.JSONArray;
@@ -100,5 +101,18 @@ public class Utility {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static AQI handleAQIResponse(String response){
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather6");
+            String AQIContent = jsonArray.getJSONObject(0).toString();
+            return new Gson().fromJson(AQIContent, AQI.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+
     }
 }

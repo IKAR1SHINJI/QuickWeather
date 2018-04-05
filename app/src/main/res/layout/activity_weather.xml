@@ -40,9 +40,10 @@
 
                     <include layout="@layout/forecast" />
 
+                    <include layout="@layout/aqi" />
+
                     <include layout="@layout/lifestyle"/>
 
-                    <!--<include layout="@layout/aqi" />-->
 
                     <!--<include layout="@layout/outgoing_advice" />-->
 

@@ -25,6 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.nerv.quickweather.gson.AQI;
 import com.nerv.quickweather.gson.Forecast;
 import com.nerv.quickweather.gson.Lifestyle;
 import com.nerv.quickweather.gson.Weather;
@@ -78,11 +79,11 @@ public class WeatherActivity extends AppCompatActivity {
 
     private LinearLayout lifestyleLayout;
 
-    private TextView aqiText;
+    private TextView aqiValue;
 
-    private TextView pm25Text;
+    private TextView pm25Value;
 
-    private TextView pm10Text;
+    private TextView pm10Value;
 
     private TextView comfortText;
 
@@ -127,9 +128,9 @@ public class WeatherActivity extends AppCompatActivity {
         weatherWindDir=(TextView) findViewById(R.id.weather_wind_dir);
         forecastLayout=(LinearLayout) findViewById(R.id.forecast_layout);
         lifestyleLayout=(LinearLayout) findViewById(R.id.lifestyle_layout);
-        aqiText=(TextView) findViewById(R.id.aqi_text);
-        pm25Text=(TextView) findViewById(R.id.pm25_text);
-        pm10Text=(TextView) findViewById(R.id.pm10_text);
+        aqiValue=(TextView) findViewById(R.id.aqi_value);
+        pm25Value=(TextView) findViewById(R.id.pm25_value);
+        pm10Value=(TextView) findViewById(R.id.pm10_value);
         comfortText = (TextView) findViewById(R.id.outgoing_text);
         carWashText = (TextView) findViewById(R.id.carwash_text);
         sportText = (TextView) findViewById(R.id.sport_text);
@@ -144,22 +145,28 @@ public class WeatherActivity extends AppCompatActivity {
 
         SharedPreferences preferences= PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString=preferences.getString("weather",null);
+        String aqiString=preferences.getString("aqi",null);
 
         //有缓存时直接解析天气，无缓存时去访问服务器查询天气
-        if(weatherString!=null){
+        if(weatherString!=null&&aqiString!=null){
             Weather weather= Utility.handleWeatherResponse(weatherString);
             mWeatherId=weather.basic.weatherId;
             showWeatherInfo(weather);
+
+            AQI aqi=Utility.handleAQIResponse(aqiString);
+            showAQIInfo(aqi);
         }else {
             mWeatherId=getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.INVISIBLE);
             requestWeather(mWeatherId);
+            requestAQI(mWeatherId);
         }
 
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
                 requestWeather(mWeatherId);
+                requestAQI(mWeatherId);
             }
         });
 
@@ -294,6 +301,8 @@ public class WeatherActivity extends AppCompatActivity {
 //            }
 //            positionText.setText(currentPosition);
             requestWeather(coordinate);
+            requestAQI(coordinate);
+            loadBingPic();
         }
     }
 
@@ -342,7 +351,171 @@ public class WeatherActivity extends AppCompatActivity {
                 });
             }
         });
-        loadBingPic();
+
+        String aqiUrl="https://free-api.heweather.com/s6/air?key=" + key + "&location=" + weatherId;
+        HttpUtil.sendOkHttpRequest(aqiUrl, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(WeatherActivity.this,"获取空气质量出错",Toast.LENGTH_LONG).show();
+                        swipeRefresh.setRefreshing(false);
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String responseText=response.body().string();
+
+//                final Weather weather=Utility.handleWeatherResponse(responseText);
+                final AQI aqi=Utility.handleAQIResponse(responseText);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(aqi!=null&&"ok".equals(aqi.status)){
+                            SharedPreferences.Editor editor=PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
+                            editor.putString("aqi",responseText);
+                            editor.apply();
+//                            mWeatherId=weather.basic.weatherId;
+                            showAQIInfo(aqi);
+                        }else {
+                            Toast.makeText(WeatherActivity.this,"获取天气信息失败",Toast.LENGTH_SHORT).show();
+                        }
+                        swipeRefresh.setRefreshing(false);
+                    }
+                });
+            }
+        });
+    }
+    //
+
+    /**
+     * 根据天气id请求空气质量信息。
+     */
+    public void requestAQI(final String weatherId){
+        String aqiUrl="https://free-api.heweather.com/s6/air?key=" + key + "&location=" + weatherId;
+        HttpUtil.sendOkHttpRequest(aqiUrl, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(WeatherActivity.this,"获取空气质量信息出错",Toast.LENGTH_LONG).show();
+                        swipeRefresh.setRefreshing(false);
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String responseText=response.body().string();
+
+//                final Weather weather=Utility.handleWeatherResponse(responseText);
+                final AQI aqi=Utility.handleAQIResponse(responseText);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(aqi!=null&&"ok".equals(aqi.status)){
+                            SharedPreferences.Editor editor=PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
+                            editor.putString("aqi",responseText);
+                            editor.apply();
+                            showAQIInfo(aqi);
+                        }else {
+                            Toast.makeText(WeatherActivity.this,"获取空气质量信息失败",Toast.LENGTH_SHORT).show();
+                        }
+                        swipeRefresh.setRefreshing(false);
+                    }
+                });
+            }
+        });
+    }
+
+//
+
+    /**
+     * 处理并展示Weather实体类中的数据。
+     */
+    private void showWeatherInfo(Weather weather){
+        if(weather!=null&&"ok".equals(weather.status)){
+            String cityName = weather.basic.cityName;
+            String strUpdateTime = weather.update.updateTime.split(" ")[1];
+            String strDegree = weather.now.temperature + "℃";
+            String strFeelTemperature=weather.now.feelTemperature + "℃";
+            String strCondInfo=weather.now.condInfo;
+            String strWindLv=weather.now.windlv;
+            String strWindSpd=weather.now.windSpd;
+            String strWindDir=weather.now.windDir;
+            titleCity.setText(cityName);
+            updateTime.setText("发布时间:"+strUpdateTime);
+            degreeText.setText(strDegree);
+            feelTemperature.setText("体感温度:"+strFeelTemperature);
+            weatherCondText.setText(strCondInfo);
+            weatherWindLv.setText("风力:"+strWindLv);
+            weatherWindSpd.setText("风速:"+strWindSpd+"km/h");
+            weatherWindDir.setText("风向:"+strWindDir);
+            forecastLayout.removeAllViews();
+            for(Forecast forecast:weather.forecastList){
+                View view= LayoutInflater.from(this).inflate(R.layout.forecast_item,forecastLayout,false);
+                TextView dateText = (TextView) view.findViewById(R.id.date_text);
+                TextView infoText = (TextView) view.findViewById(R.id.info_text);
+                TextView temperature_range = (TextView) view.findViewById(R.id.temperature_range);
+                dateText.setText(forecast.date);
+                infoText.setText(forecast.info_d+"/"+forecast.info_n);
+                temperature_range.setText(forecast.tmp_max+ "/" + forecast.tmp_min+ "℃");
+                forecastLayout.addView(view);
+            }
+            lifestyleLayout.removeAllViews();
+            for(Lifestyle lifestyle:weather.lifestyleList){
+                View view=LayoutInflater.from(this).inflate(R.layout.lifestyle_item,lifestyleLayout,false);
+                TextView lifeType=(TextView) view.findViewById(R.id.life_type);
+                TextView lifeText=(TextView) view.findViewById(R.id.life_text);
+                lifeType.setText(lifestyle.life_brf);
+                lifeText.setText(lifestyle.life_txt);
+                lifestyleLayout.addView(view);
+            }
+    //        if(weather.aqi!=null){
+    //            aqiText.setText(weather.aqi.city.aqi);
+    //            pm25Text.setText(weather.aqi.city.pm25);
+    //            pm10Text.setText(weather.aqi.city.pm10);
+    //        }
+
+    //        String comfort = weather.lifestyle.comfort.info;
+    //        String carWash =  weather.lifestyle.carWash.info;
+    //        String sport = weather.lifestyle.sport.info;
+    //        comfortText.setText(comfort);
+    //        carWashText.setText(carWash);
+    //        sportText.setText(sport);
+
+            weatherLayout.setVisibility(View.VISIBLE);
+    //        lifestyleLayout.setVisibility(View.VISIBLE);
+
+            Intent intent = new Intent(this, AutoUpdateService.class);
+            startService(intent);
+
+            Toast.makeText(WeatherActivity.this,"获取天气信息成功",Toast.LENGTH_SHORT).show();
+
+        } else {
+            Toast.makeText(WeatherActivity.this,"获取天气信息失败",Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showAQIInfo(AQI aqi){
+        if(aqi!=null&&"ok".equals(aqi.status)){
+            String strAqiValve=aqi.airquality.aqi_value;
+            String strAqiText=aqi.airquality.aqi_text;
+            String strPm25=aqi.airquality.pm25;
+            String strPm10=aqi.airquality.pm10;
+
+            aqiValue.setText(strAqiValve);
+            pm25Value.setText(strPm25);
+            pm10Value.setText(strPm10);
+        }
     }
 
     /**
@@ -373,70 +546,4 @@ public class WeatherActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * 处理并展示Weather实体类中的数据。
-     */
-    private void showWeatherInfo(Weather weather){
-        if(weather!=null&&"ok".equals(weather.status)){
-        String cityName = weather.basic.cityName;
-        String strUpdateTime = weather.update.updateTime.split(" ")[1];
-        String strDegree = weather.now.temperature + "℃";
-        String strFeelTemperature=weather.now.feelTemperature + "℃";
-        String strCondInfo=weather.now.condInfo;
-        String strWindLv=weather.now.windlv;
-        String strWindSpd=weather.now.windSpd;
-        String strWindDir=weather.now.windDir;
-        titleCity.setText(cityName);
-        updateTime.setText("发布时间:"+strUpdateTime);
-        degreeText.setText(strDegree);
-        feelTemperature.setText("体感温度:"+strFeelTemperature);
-        weatherCondText.setText(strCondInfo);
-        weatherWindLv.setText("风力:"+strWindLv);
-        weatherWindSpd.setText("风速:"+strWindSpd+"km/h");
-        weatherWindDir.setText("风向:"+strWindDir);
-        forecastLayout.removeAllViews();
-        for(Forecast forecast:weather.forecastList){
-            View view= LayoutInflater.from(this).inflate(R.layout.forecast_item,forecastLayout,false);
-            TextView dateText = (TextView) view.findViewById(R.id.date_text);
-            TextView infoText = (TextView) view.findViewById(R.id.info_text);
-            TextView temperature_range = (TextView) view.findViewById(R.id.temperature_range);
-            dateText.setText(forecast.date);
-            infoText.setText(forecast.info_d+"/"+forecast.info_n);
-            temperature_range.setText(forecast.tmp_max+ "℃"+"/"+forecast.tmp_min+ "℃");
-            forecastLayout.addView(view);
-        }
-        lifestyleLayout.removeAllViews();
-        for(Lifestyle lifestyle:weather.lifestyleList){
-            View view=LayoutInflater.from(this).inflate(R.layout.lifestyle_item,lifestyleLayout,false);
-            TextView lifeType=(TextView) view.findViewById(R.id.life_type);
-            TextView lifeText=(TextView) view.findViewById(R.id.life_text);
-            lifeType.setText(lifestyle.life_brf);
-            lifeText.setText(lifestyle.life_txt);
-            lifestyleLayout.addView(view);
-        }
-//        if(weather.aqi!=null){
-//            aqiText.setText(weather.aqi.city.aqi);
-//            pm25Text.setText(weather.aqi.city.pm25);
-//            pm10Text.setText(weather.aqi.city.pm10);
-//        }
-
-//        String comfort = weather.lifestyle.comfort.info;
-//        String carWash =  weather.lifestyle.carWash.info;
-//        String sport = weather.lifestyle.sport.info;
-//        comfortText.setText(comfort);
-//        carWashText.setText(carWash);
-//        sportText.setText(sport);
-
-        weatherLayout.setVisibility(View.VISIBLE);
-//        lifestyleLayout.setVisibility(View.VISIBLE);
-
-        Intent intent = new Intent(this, AutoUpdateService.class);
-        startService(intent);
-
-        Toast.makeText(WeatherActivity.this,"获取天气信息成功",Toast.LENGTH_SHORT).show();
-
-        } else {
-            Toast.makeText(WeatherActivity.this,"获取天气信息失败",Toast.LENGTH_SHORT).show();
-        }
-    }
 }
